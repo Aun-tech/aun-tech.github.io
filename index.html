@@ -1,52 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Dianosaur Game</title>
-    <style>
-        /* CSS styles for the game canvas */
-        canvas {
-            width: 800px;
-            height: 600px;
-            border: 1px solid black;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>AUN's Dino Game</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f0f0f0;
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+    }
+    canvas {
+      background-image: url('https://i.ibb.co/YR3zP64/desert-bg.jpg');
+      background-size: cover;
+      display: block;
+      margin: 20px auto;
+      border: 2px solid #333;
+    }
+    video {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 200px;
+      height: 150px;
+      border: 2px solid #666;
+      z-index: 1000;
+    }
+  </style>
 </head>
 <body>
-    <h1>Dianosaur Game</h1>
-    <canvas id="gameCanvas"></canvas>
 
-    <script>
-        // JavaScript code for the game
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+<h1>🦖 AUN's Dino Run</h1>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+<video id="userCamera" autoplay muted></video>
 
-        // Set up the game loop
-        function gameLoop() {
-            // Clear the canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
 
-            // Render the game graphics
-            // ...
+  // Load images
+  const dinoImg = new Image();
+  dinoImg.src = 'https://i.ibb.co/dLf42qR/dino.png';
 
-            // Request the next frame
-            requestAnimationFrame(gameLoop);
-        }
+  const cactusImg = new Image();
+  cactusImg.src = 'https://i.ibb.co/NZk8Bbw/cactus.png';
 
-        // Start the game loop
-        gameLoop();
+  let dino = { x: 50, y: 310, width: 40, height: 40, dy: 0, jumping: false };
+  let cactus = { x: 800, y: 320, width: 30, height: 40 };
+  let gravity = 1.5;
+  let score = 0;
 
-        // Access the user's camera
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                const video = document.createElement('video');
-                video.srcObject = stream;
-                video.play();
-                // Process the video stream (e.g., for game logic or visual effects)
-                // ...
-            })
-            .catch(error => {
-                console.error('Error accessing camera:', error);
-            });
-    </script>
+  function drawDino() {
+    ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
+  }
+
+  function drawCactus() {
+    ctx.drawImage(cactusImg, cactus.x, cactus.y, cactus.width, cactus.height);
+  }
+
+  function updateGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawDino();
+    drawCactus();
+
+    // Move cactus
+    cactus.x -= 6;
+    if (cactus.x < -cactus.width) {
+      cactus.x = 800;
+      score++;
+    }
+
+    // Gravity
+    dino.y += dino.dy;
+    if (dino.y < 310) {
+      dino.dy += gravity;
+    } else {
+      dino.y = 310;
+      dino.dy = 0;
+      dino.jumping = false;
+    }
+
+    // Collision detection
+    if (
+      dino.x < cactus.x + cactus.width &&
+      dino.x + dino.width > cactus.x &&
+      dino.y < cactus.y + cactus.height &&
+      dino.y + dino.height > cactus.y
+    ) {
+      alert('Game Over! Your Score: ' + score);
+      document.location.reload();
+    }
+
+    // Score
+    ctx.fillStyle = "#000";
+    ctx.font = "20px Arial";
+    ctx.fillText("Score: " + score, 680, 30);
+
+    requestAnimationFrame(updateGame);
+  }
+
+  // Jump logic
+  document.addEventListener("keydown", function (e) {
+    if (e.code === "Space" && !dino.jumping) {
+      dino.dy = -20;
+      dino.jumping = true;
+    }
+  });
+
+  // Start Game
+  updateGame();
+
+  // Camera Access
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(stream => {
+      const video = document.getElementById('userCamera');
+      video.srcObject = stream;
+    })
+    .catch(err => {
+      console.error('Camera error:', err);
+    });
+</script>
+
 </body>
 </html>
