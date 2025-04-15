@@ -13,7 +13,7 @@
       color: #333;
     }
     canvas {
-      background-image: url('https://i.ibb.co/YR3zP64/desert-bg.jpg');
+      background: url('Background.png.png') no-repeat center center;
       background-size: cover;
       display: block;
       margin: 20px auto;
@@ -40,12 +40,11 @@
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
 
-  // Load images
   const dinoImg = new Image();
-  dinoImg.src = 'https://i.ibb.co/dLf42qR/dino.png';
+  dinoImg.src = 'Dinasour.png.png';  // Your custom file
 
   const cactusImg = new Image();
-  cactusImg.src = 'https://i.ibb.co/NZk8Bbw/cactus.png';
+  cactusImg.src = 'Cactus.png.png';  // Your custom file
 
   let dino = { x: 50, y: 310, width: 40, height: 40, dy: 0, jumping: false };
   let cactus = { x: 800, y: 320, width: 30, height: 40 };
@@ -65,14 +64,12 @@
     drawDino();
     drawCactus();
 
-    // Move cactus
     cactus.x -= 6;
     if (cactus.x < -cactus.width) {
       cactus.x = 800;
       score++;
     }
 
-    // Gravity
     dino.y += dino.dy;
     if (dino.y < 310) {
       dino.dy += gravity;
@@ -82,7 +79,6 @@
       dino.jumping = false;
     }
 
-    // Collision detection
     if (
       dino.x < cactus.x + cactus.width &&
       dino.x + dino.width > cactus.x &&
@@ -93,7 +89,6 @@
       document.location.reload();
     }
 
-    // Score
     ctx.fillStyle = "#000";
     ctx.font = "20px Arial";
     ctx.fillText("Score: " + score, 680, 30);
@@ -101,7 +96,6 @@
     requestAnimationFrame(updateGame);
   }
 
-  // Jump logic
   document.addEventListener("keydown", function (e) {
     if (e.code === "Space" && !dino.jumping) {
       dino.dy = -20;
@@ -109,10 +103,9 @@
     }
   });
 
-  // Start Game
   updateGame();
 
-  // Camera Access
+  // Camera access
   navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => {
       const video = document.getElementById('userCamera');
